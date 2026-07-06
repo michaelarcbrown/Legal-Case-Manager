@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Case Command">
+<title>Case Command</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0E1420; --ink-2:#151D2E; --ink-3:#1B2538;
+  --line:#26314A; --paper:#E8E4DA; --muted:#7C88A0;
+  --stamp:#E0A82E; --done:#5FA36B; --alert:#D96A5B; --info:#6B9BD9;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--ink)}
+body{background:var(--ink);color:var(--paper);font-family:'IBM Plex Sans',system-ui,sans-serif;
+  font-size:15px;line-height:1.45;max-width:560px;margin:0 auto;min-height:100vh;padding:0 0 90px 0;}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--paper);
+  background:var(--ink-3);border:1px solid var(--line);border-radius:4px;padding:8px 10px;outline:none;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--stamp)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.7}
+textarea{resize:vertical;min-height:60px}
+input[type=date]{color-scheme:dark}
+input:disabled{opacity:.75;cursor:not-allowed;border-color:var(--alert)}
+
+header{padding:calc(env(safe-area-inset-top,0px) + 16px) 16px 0 16px}
+.docket-rule{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--stamp);padding-bottom:7px}
+.docket-rule h1{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:24px;letter-spacing:.06em;text-transform:uppercase}
+.docket-rule .ref{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em}
+.counters{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);margin-top:12px}
+.counter{background:var(--ink-2);padding:12px;position:relative}
+.counter .num{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:40px;line-height:1;color:var(--stamp);font-variant-numeric:tabular-nums}
+.counter.court .num{color:var(--paper)}
+.counter .lbl{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+.stamp-mark{position:absolute;top:9px;right:9px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--stamp);border:1px solid var(--stamp);padding:2px 5px;border-radius:2px;transform:rotate(4deg);opacity:.85}
+
+.bond{margin:14px 16px 0 16px;border:1px solid var(--alert);border-radius:4px;overflow:hidden}
+.bond summary{list-style:none;cursor:pointer;padding:9px 12px;display:flex;align-items:center;gap:8px;
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--alert);user-select:none}
+.bond summary::-webkit-details-marker{display:none}
+.bond summary .chev{margin-left:auto;transition:transform .2s;font-size:11px}
+.bond[open] summary .chev{transform:rotate(90deg)}
+.bond ul{padding:2px 14px 12px 30px;font-size:13px}
+.bond li{margin-bottom:4px}
+.bond li strong{color:var(--alert)}
+
+.setup{margin:14px 16px 0 16px;background:var(--ink-2);border:1px solid var(--info);border-radius:4px;padding:12px}
+.setup h3{font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.09em;text-transform:uppercase;color:var(--info);margin-bottom:6px}
+.setup p{font-size:12.5px;color:var(--paper);margin-bottom:8px;line-height:1.5}
+.setup .url-row{display:flex;gap:6px}
+.setup .url-row input{font-family:'IBM Plex Mono',monospace;font-size:11px}
+.setup .url-row button{white-space:nowrap;background:var(--info);color:var(--ink);border:none;border-radius:4px;padding:0 12px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.08em;font-size:13px;text-transform:uppercase}
+.setup .setup-toggle{background:none;border:none;color:var(--muted);font-size:11px;text-decoration:underline;margin-top:8px;padding:0}
+.setup-status{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;margin-top:8px}
+.setup-status.ok{color:var(--done)}
+.setup-status.fail{color:var(--alert)}
+.setup pre{background:var(--ink);border:1px solid var(--line);border-radius:3px;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--paper);overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin-top:8px;line-height:1.4}
+
+.tabs{position:fixed;bottom:0;left:0;right:0;max-width:560px;margin:0 auto;
+  display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--ink-2);
+  border-top:1px solid var(--line);z-index:50;padding-bottom:env(safe-area-inset-bottom,0px)}
+.tab-btn{background:none;border:none;padding:12px 4px 10px 4px;color:var(--muted);
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:14px;letter-spacing:.09em;text-transform:uppercase;
+  border-top:2px solid transparent}
+.tab-btn.active{color:var(--stamp);border-top-color:var(--stamp)}
+.tab-btn small{display:block;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.06em;margin-top:2px;text-transform:none;color:var(--muted)}
+
+main{padding:0 16px}
+.panel{display:none}
+.panel.active{display:block}
+.sec{margin-top:22px}
+.sec-head{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:8px}
+.sec-head h2{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:17px;letter-spacing:.1em;text-transform:uppercase}
+.sec-head .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-left:auto}
+.status-line{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:var(--info);
+  border:1px dashed var(--info);border-radius:3px;padding:8px 10px;margin-top:12px;line-height:1.6}
+
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.info-field{display:flex;flex-direction:column;gap:3px}
+.info-field.full{grid-column:1/-1}
+.info-field label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+.info-field label .lock{background:none;border:none;color:var(--muted);font-size:12px;padding:0 2px}
+.info-field label .lock.locked{color:var(--alert)}
+
+.task{border-bottom:1px solid rgba(38,49,74,.5);padding:10px 0}
+.task:last-child{border-bottom:none}
+.t-row{display:flex;gap:11px;align-items:flex-start;cursor:pointer}
+.box{flex:0 0 21px;height:21px;margin-top:1px;border:1.5px solid var(--muted);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;transition:all .15s}
+.box svg{width:12px;height:12px;opacity:0;transform:scale(.5);transition:all .15s}
+.task.done .box{background:var(--done);border-color:var(--done)}
+.task.done .box svg{opacity:1;transform:scale(1)}
+.t-body{flex:1;min-width:0}
+.t-title{font-weight:500;font-size:14px}
+.task.done .t-title{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(124,136,160,.6)}
+.t-due{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--stamp);margin-top:3px;display:inline-block}
+.t-due.critical{color:var(--alert);border:1px solid var(--alert);padding:1px 5px;border-radius:2px}
+.t-attach-btn{background:none;border:1px solid var(--line);border-radius:3px;color:var(--muted);
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;padding:3px 7px;margin-left:8px;flex:0 0 auto;text-transform:uppercase}
+.t-attach-btn.has{color:var(--done);border-color:var(--done)}
+
+.ev-item{display:flex;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(38,49,74,.5)}
+.ev-item:last-child{border-bottom:none}
+.ev-name{flex:1;font-size:13.5px;min-width:0;cursor:pointer}
+.ev-name small{display:block;font-size:11px;color:var(--muted)}
+.ev-name .has-attach{color:var(--done);font-size:10px;letter-spacing:.05em;font-family:'IBM Plex Mono',monospace}
+.ev-status{flex:0 0 auto}
+.ev-status select{width:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;padding:5px 6px;text-transform:uppercase}
+.ev-status select.s-todo{color:var(--muted)}
+.ev-status select.s-hold{color:var(--info);border-color:var(--info)}
+.ev-status select.s-requested{color:var(--stamp);border-color:var(--stamp)}
+.ev-status select.s-received{color:var(--done);border-color:var(--done)}
+
+.log-entry{padding:9px 0;border-bottom:1px solid rgba(38,49,74,.5)}
+.log-entry:last-child{border-bottom:none}
+.log-date{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--stamp);letter-spacing:.06em;margin-bottom:2px;display:flex;justify-content:space-between}
+.log-date button{background:none;border:none;color:var(--muted);font-size:13px;opacity:.6}
+.log-text{font-size:13.5px;white-space:pre-wrap}
+.log-add{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+
+.cal-datehead{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--stamp);
+  border-bottom:1px solid var(--line);padding:12px 0 4px 0;text-transform:uppercase}
+.cal-datehead.today{color:var(--alert)}
+.cal-ev{display:flex;gap:9px;align-items:center;padding:8px 0 8px 4px}
+.cal-tag{flex:0 0 auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.08em;padding:2px 6px;border-radius:2px;border:1px solid var(--muted);color:var(--muted);text-transform:uppercase}
+.cal-tag.kokomo{border-color:var(--stamp);color:var(--stamp)}
+.cal-tag.lafayette{border-color:var(--info);color:var(--info)}
+.cal-tag.other{border-color:var(--alert);color:var(--alert)}
+.cal-title{flex:1;font-size:13.5px;display:flex;align-items:center;gap:6px}
+.cal-title input{border:none;background:transparent;padding:0;font-size:13.5px}
+.cal-title input:focus{background:var(--ink-3);border:1px solid var(--stamp);padding:4px 6px;border-radius:3px}
+.cal-ev button{background:none;border:none;color:var(--muted);font-size:14px;opacity:.6;padding:0 4px}
+.cal-lock{color:var(--alert);font-size:11px}
+.cal-empty{color:var(--muted);font-size:13px;padding:14px 0}
+.cal-add{display:flex;flex-direction:column;gap:7px;margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+.cal-add .row3{display:flex;gap:7px}
+.cal-add label.crit-toggle{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.06em;display:flex;align-items:center;gap:6px}
+.cal-add label.crit-toggle input{width:auto}
+
+.btn{background:var(--stamp);color:var(--ink);border:none;border-radius:4px;
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:9px 16px}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--muted)}
+.adder{display:flex;gap:7px;margin-top:12px}
+
+.foot{margin:26px 16px 0 16px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:11px}
+.foot .saved{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);letter-spacing:.08em}
+.foot .reset{background:none;border:1px solid var(--line);border-radius:3px;color:var(--muted);
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;padding:5px 10px}
+.loading{text-align:center;padding:40px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em}
+
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:none;align-items:flex-end;justify-content:center;padding:0}
+.modal-back.active{display:flex}
+.modal{background:var(--ink-2);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;
+  border-top:2px solid var(--stamp);border-radius:8px 8px 0 0;padding:20px 16px 30px 16px;position:relative}
+.modal h3{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:19px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;padding-right:30px}
+.modal .close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:24px}
+.modal .how{font-size:13px;color:var(--muted);white-space:pre-line;margin-bottom:14px;line-height:1.55;padding:10px;background:var(--ink);border-left:2px solid var(--stamp);border-radius:0 3px 3px 0}
+.modal .how b{color:var(--paper)}
+.modal-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin:14px 0 4px 0}
+.modal .file-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.file-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--ink);border:1px solid var(--line);border-radius:3px;font-size:12.5px}
+.file-item .fi-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-item .fi-size{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+.file-item button{background:none;border:none;color:var(--muted);font-size:14px;padding:0 4px}
+.file-item a{color:var(--info);text-decoration:none;font-size:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:.05em}
+.modal .actions{display:flex;gap:8px;margin-top:14px}
+.modal .actions button{flex:1}
+.file-drop{border:1px dashed var(--line);border-radius:4px;padding:14px;text-align:center;color:var(--muted);font-size:12px;margin-top:6px;cursor:pointer}
+.file-drop:hover{border-color:var(--stamp);color:var(--stamp)}
+.upload-warn{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+.upload-warn b{color:var(--alert)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="docket-rule">
+    <h1>Case Command</h1>
+    <span class="ref">BROWN, M.I. · IN</span>
+  </div>
+  <div class="counters">
+    <div class="counter">
+      <span class="stamp-mark">VERIFIED</span>
+      <div class="num" id="soberDays">–</div>
+      <div class="lbl">Days Alcohol-Free<br>since Jul 5 2026</div>
+    </div>
+    <div class="counter court">
+      <div class="num" id="nextDays">–</div>
+      <div class="lbl" id="nextLbl">Days to next deadline</div>
+    </div>
+  </div>
+</header>
+
+<details class="bond">
+  <summary>&#9888; Bond Conditions — Always Active <span class="chev">&#9656;</span></summary>
+  <ul>
+    <li><strong>Stay in Indiana</strong> — no out-of-state travel</li>
+    <li><strong>Zero alcohol</strong> / no controlled substances (unless prescribed)</li>
+    <li>No firearms or weapons</li>
+    <li>No contact with complaining witnesses</li>
+    <li>No new offenses — a problem in either county affects both cases</li>
+  </ul>
+</details>
+
+<div class="setup" id="setupBox">
+  <h3>Google Sheets Backup</h3>
+  <p id="setupBody">Data saves to this device instantly, and pushes a backup to your Google Sheet in the background so you never lose it. One-time setup: paste the Apps Script into your sheet, deploy it as a Web App, paste the URL here.</p>
+  <div class="url-row">
+    <input type="text" id="webhookUrl" placeholder="Paste your Apps Script Web App URL here…">
+    <button id="webhookSave">Save</button>
+  </div>
+  <div class="setup-status" id="setupStatus">Not configured — saving to device only.</div>
+  <button class="setup-toggle" id="showScript">Show the Apps Script to paste into your sheet ▸</button>
+  <pre id="scriptBox" style="display:none"></pre>
+</div>
+
+<main id="app"><div class="loading">LOADING…</div></main>
+
+<div class="foot">
+  <span class="saved" id="savedLabel">SYNCED</span>
+  <button class="reset" id="resetBtn">RESET ALL DATA</button>
+</div>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="kokomo">Kokomo<small>Howard Co. · OWI</small></button>
+  <button class="tab-btn" data-tab="lafayette">W. Lafayette<small>Tippecanoe · unfiled</small></button>
+  <button class="tab-btn" data-tab="calendar">Calendar<small>all deadlines</small></button>
+</nav>
+
+<div class="modal-back" id="modalBack">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+const KEY='case-command-v3';
+const WEBHOOK_KEY='case-command-webhook';
+const store={
+  async get(k){
+    if(window.storage&&window.storage.get){try{const r=await window.storage.get(k);return r&&r.value?r.value:null}catch(e){return null}}
+    try{return localStorage.getItem(k)}catch(e){return null}
+  },
+  async set(k,v){
+    if(window.storage&&window.storage.set){try{await window.storage.set(k,v);return true}catch(e){return false}}
+    try{localStorage.setItem(k,v);return true}catch(e){return false}
+  }
+};
+
+const APPS_SCRIPT_CODE = `// Case Command — paste into your Google Sheet:
+//   Extensions > Apps Script > replace all code > Save
+//   Deploy > New deployment > Type: Web app
+//   Execute as: Me  |  Who has access: Anyone
+//   Copy the Web App URL and paste it into the app.
+
+const SHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+
+    let snap = ss.getSheetByName('SNAPSHOT') || ss.insertSheet('SNAPSHOT');
+    snap.appendRow([new Date(), JSON.stringify(payload)]);
+
+    ['TASKS','EVIDENCE','LOG','EVENTS','CASE_INFO'].forEach(name => {
+      let sh = ss.getSheetByName(name) || ss.insertSheet(name);
+      sh.clear();
+    });
+
+    const t = ss.getSheetByName('TASKS');
+    t.appendRow(['Case','ID','Title','Done','Due','Critical','Notes','Attachments']);
+    ['kokomo','lafayette'].forEach(cid => {
+      (payload.cases[cid].tasks || []).forEach(x => {
+        t.appendRow([cid, x.id, x.title, x.done?'YES':'', x.due||'', x.critical?'YES':'', x.notes||'', (x.files||[]).map(f=>f.name).join(' | ')]);
+      });
+    });
+
+    const ev = ss.getSheetByName('EVIDENCE');
+    ev.appendRow(['Case','ID','Item','Source','Status','Attachments']);
+    ['kokomo','lafayette'].forEach(cid => {
+      (payload.cases[cid].evidence || []).forEach(x => {
+        ev.appendRow([cid, x.id, x.name, x.src||'', x.status, (x.files||[]).map(f=>f.name).join(' | ')]);
+      });
+    });
+
+    const lg = ss.getSheetByName('LOG');
+    lg.appendRow(['Case','Timestamp','Entry']);
+    ['kokomo','lafayette'].forEach(cid => {
+      (payload.cases[cid].log || []).forEach(x => {
+        lg.appendRow([cid, new Date(x.ts), x.text]);
+      });
+    });
+
+    const cal = ss.getSheetByName('EVENTS');
+    cal.appendRow(['Date','Case','Title','Critical']);
+    (payload.events || []).forEach(x => {
+      cal.appendRow([x.date, x.caseId, x.title, x.critical?'YES':'']);
+    });
+
+    const ci = ss.getSheetByName('CASE_INFO');
+    ci.appendRow(['Case','Field','Value','Locked']);
+    ['kokomo','lafayette'].forEach(cid => {
+      const info = payload.cases[cid].info || {};
+      Object.keys(info).forEach(k => ci.appendRow([cid, k, info[k].v || '', info[k].locked?'YES':'']));
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ok:false, error: String(err)})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet() { return ContentService.createTextOutput('Case Command webhook is live.'); }`;
+
+function defaults(){return {
+  activeTab:'kokomo',
+  cases:{
+    kokomo:{
+      name:'State v. Brown — Howard County (Kokomo)',
+      statusLine:'ACTIVE CASE · Class A misdemeanor OWI alleged · arrested 7/4–5/2026 · bond posted $800 · cause number pending — check mycase.in.gov daily and record it in Case Info the moment it posts.',
+      info:{
+        'Cause No.':{v:'',locked:false},
+        'Court':{v:'Howard — Circuit or Superior (see bond form)',locked:false},
+        'Hearing date':{v:'2026-07-20',locked:true},
+        'Hearing time':{v:'confirm on mycase / court alerts',locked:false},
+        'Attorney':{v:'',locked:false},
+        'Attorney phone':{v:'',locked:false},
+        'Bond posted':{v:'$800 cash (10%)',locked:true},
+        'Receipt #':{v:'16445244 (verify)',locked:false}
+      },
+      tasks:[
+        {id:'k1',title:'Report to Howard Co. Community Supervision',due:'TODAY JUL 6 · BY 3:00 PM',critical:true,done:false,
+         how:'<b>Where:</b> 104 N Buckeye St, Room 204, Kokomo (closed 12–1 PM).\n<b>Bring:</b> photo ID + bond paperwork.\n<b>Do:</b> sign up for court alerts; ask them to confirm hearing date & time and write it in Case Info above.\n<b>Why:</b> bond requirement. Missing it can trigger a warrant before your case even starts.',
+         notes:'',files:[]},
+        {id:'k2',title:'Find cause number on mycase.in.gov, then read the charging information',done:false,
+         how:'<b>Do:</b> search your name daily until Howard Co. case posts. Enter the cause number in Case Info.\n<b>Then:</b> open "Charging Information" and note the exact statute:\n· 9-30-5-2(a) = base OWI (Class C)\n· 9-30-5-2(b) = "endangerment" (Class A)\n· 9-30-5-1(b) = 0.15+ BAC (Class A)\n<b>Why:</b> which prong they charged tells your attorney what the State must prove.',
+         notes:'',files:[]},
+        {id:'k3',title:'Book 2–3 FREE attorney consultations',due:'THIS WEEK',done:false,
+         how:'<b>Cost:</b> intro consults are almost always free. Treat them as job interviews for who you\u2019ll hire.\n<b>Ask each:</b>\n1. Flat fee for a Howard Co. Class A OWI? Payment plan?\n2. Experience getting implied-consent refusal suspensions terminated?\n3. Would you also advise on an apparently-unfiled Tippecanoe arrest? Extra cost?\n4. Realistic diversion/deferral outlook with voluntary Soberlink + clean record?\n<b>Privilege:</b> what you tell them is privileged even in a free consult — mention the Tippecanoe matter openly. They need the full picture.\n<b>Bring:</b> bond sheet, Receipt for License, warning citation, both written accounts, this app.',
+         notes:'',files:[]},
+        {id:'k4',title:'If money is short by Jul 20: public defender or continuance',done:false,
+         how:'<b>At initial hearing, three safe moves:</b>\n1. Plead NOT GUILTY (standard procedural — see below).\n2. Request the public defender / indigency form ($800 to your name qualifies you for review).\n3. Or ask the judge for time to hire private counsel — routinely granted.\n<b>Never:</b> plead guilty or discuss facts at initial hearing.\n\n<b>WHY NOT GUILTY:</b> at arraignment "not guilty" is the default entry that preserves every option — discovery, negotiation, motions, later plea deals. It cannot increase your sentence at this stage. Sentencing enhancements for "not accepting responsibility" only apply if you go to TRIAL and lose — a decision months away.',
+         notes:'',files:[]},
+        {id:'k5',title:'Write your full account of the stop (tonight)',critical:true,done:false,
+         how:'<b>Cover, in order:</b>\n· Route, start time, minutes driving\n· What the officer said about the 3 calls — exact words\n· Every time you asked them to articulate suspicion, and their responses\n· Exact words/moment of the exit order\n· What "refusing" referred to — chemical test? exit? Any implied-consent advisement read?\n· Names/badge numbers you remember\n<b>Sign and date it.</b> Save via the notes field and download as .txt.',
+         notes:'',files:[]},
+        {id:'k6',title:'Mom writes her independent account',done:false,
+         how:'<b>Rules:</b> her own words, without reading yours first. Route, your driving, radio, what officers said, exit + arrest. Signed and dated. Attach here.',
+         notes:'',files:[]},
+        {id:'k7',title:'Enroll in Soberlink',due:'THIS WEEK',done:false,
+         how:'<b>What:</b> remote breathalyzer with facial verification; widely accepted by courts and prosecutors.\n<b>How:</b> soberlink.com → personal/legal program (~$100–150/mo + device).\n<b>Why:</b> converts "I quit drinking" into third-party-verified evidence.\n<b>Budget priority:</b> insurance & car note first → Soberlink → attorney (payment plan).',
+         notes:'',files:[]},
+        {id:'k8',title:'Evidence preservation letter — Kokomo PD / Howard Co.',done:false,
+         how:'<b>Preserve:</b> all bodycam, all dashcam, ALL THREE 911 recordings, CAD dispatch logs, PC affidavit, booking video.\n<b>Why 911 matters most:</b> vague/miscoded calls weaken the legal foundation for the stop.\n<b>How:</b> ideally your attorney sends on letterhead within days.',
+         notes:'',files:[]},
+        {id:'k9',title:'Substance abuse evaluation — arrange THROUGH attorney only',done:false,
+         how:'<b>Do not self-arrange.</b> Attorney-arranged evaluations can stay privileged if unhelpful; self-arranged ones may be discoverable. Raise at first attorney meeting.',
+         notes:'',files:[]},
+        {id:'k10',title:'Certified alcohol education program (Prime for Life / county CADP)',done:false,
+         how:'<b>Why:</b> usually part of the sentence anyway — completing before it\u2019s ordered converts punishment into mitigation.\n<b>When:</b> confirm timing with attorney.',
+         notes:'',files:[]}
+      ],
+      evidence:[
+        {id:'ke1',name:'911 recordings (all 3 calls)',src:'Howard Co. dispatch / Kokomo PD',status:'todo',files:[]},
+        {id:'ke2',name:'CAD dispatch log',src:'Howard Co. dispatch',status:'todo',files:[]},
+        {id:'ke3',name:'Bodycam — all officers',src:'Kokomo PD / arresting agency',status:'todo',files:[]},
+        {id:'ke4',name:'Dashcam',src:'Arresting agency',status:'todo',files:[]},
+        {id:'ke5',name:'Probable cause affidavit',src:'mycase.in.gov once filed',status:'todo',files:[]},
+        {id:'ke6',name:'Charging information',src:'mycase.in.gov once filed',status:'todo',files:[]},
+        {id:'ke7',name:'Bond receipt & conditions sheet',src:'In hand — photograph & attach',status:'received',files:[]},
+        {id:'ke8',name:'Your written account (signed/dated)',src:'You — tonight',status:'todo',files:[]},
+        {id:'ke9',name:'Mom\u2019s written account (signed/dated)',src:'Mom — independent',status:'todo',files:[]},
+        {id:'ke10',name:'Soberlink monthly reports',src:'Soberlink portal',status:'todo',files:[]}
+      ],
+      log:[]
+    },
+    lafayette:{
+      name:'West Lafayette / Tippecanoe — arrest 11/30/2025',
+      statusLine:'APPARENTLY UNFILED · agency case 2025WL02829 · Officer Ryan McDonald #146 · 0.04 breath result · no court case found on mycase as of 7/5/26. STRATEGY: verify quietly. Records requests to WLPD/Sheriff stay HOLD until attorney sign-off — they could remind the prosecutor this file exists. Clerk lookup is safe (neutral office).',
+      info:{
+        'Agency case #':{v:'2025WL02829',locked:true},
+        'Court cause #':{v:'NONE FOUND — verify with clerk',locked:false},
+        'Arresting officer':{v:'Ryan McDonald, badge 146, WLPD',locked:true},
+        'Arrest date':{v:'2025-11-30',locked:true},
+        'Breath result':{v:'0.04 (Tippecanoe jail)',locked:true},
+        'Blood draw':{v:'IU Health — results unknown',locked:false},
+        'License status':{v:'check myBMV',locked:false},
+        'Attorney':{v:'',locked:false}
+      },
+      tasks:[
+        {id:'l1',title:'Book attorney consults FIRST (from Kokomo list) — bring both matters',due:'THIS WEEK',done:false,
+         how:'<b>Sequence matters.</b> Bring up Tippecanoe openly at your first free consultation. Attorney-client privilege attaches at consult, so this is safe — and your attorney needs the whole picture to negotiate Kokomo intelligently. Ask them: "How do we resolve Kokomo without waking up Tippecanoe?"',
+         notes:'',files:[]},
+        {id:'l2',title:'Call Tippecanoe County Clerk (AFTER first attorney consult if possible)',due:'THIS WEEK',done:false,
+         how:'<b>Why it\u2019s safe:</b> the clerk is a neutral records office, not the prosecutor. Simple lookup, no routing.\n<b>Number:</b> tippecanoe.in.gov → Clerk of Courts.\n<b>Script:</b> "Can you check whether any criminal case has been filed against Michael Israel Brown, DOB 3/18/1996, arising from a November 30, 2025 arrest by West Lafayette PD? Agency case 2025WL02829."\n<b>Log it below:</b> date, who you spoke to, exact answer.',
+         notes:'',files:[]},
+        {id:'l3',title:'Pull official driving record — myBMV.in.gov',due:'THIS WEEK',done:false,
+         how:'<b>Looking for:</b> current license status; whether any implied-consent refusal suspension from 11/30/2025 was ever initiated.\n<b>Why:</b> if nothing was filed and no suspension processed, your position is stronger than assumed. Screenshot → attach here.',
+         notes:'',files:[]},
+        {id:'l4',title:'IU Health medical records request (blood results)',done:false,
+         how:'<b>Safe to do now:</b> your own medical record — the request is invisible to any prosecutor.\n<b>How:</b> IU Health MyChart → Medical Records Release, or call IU Health Arnett HIM. Request all records from 11/30/2025 including lab/toxicology.\n<b>Why:</b> a low blood BAC alongside the 0.04 breath = two objective tests under the limit.',
+         notes:'',files:[]},
+        {id:'l5',title:'HOLD — records requests to WLPD & Tippecanoe Sheriff',done:false,
+         how:'<b>Status: attorney sign-off required.</b>\nDrafted requests (report, bodycam, breathalyzer printout, calibration, booking log, hold policy) are ready — but sending now could prompt the prosecutor to file. If the case stays unfiled past the 2-year misdemeanor limitations window (Nov 2027), it dies on its own.\n<b>Ask attorney:</b> "How do we resolve Kokomo without waking this one up?"',
+         notes:'',files:[]},
+        {id:'l6',title:'Write signed notes of the December runaround calls',done:false,
+         how:'<b>Document from memory, signed & dated:</b>\n· Tippecanoe Sheriff call — told to contact WLPD\n· WLPD records call — clerk consulted police chief, who advised emailing Officer McDonald directly; claimed results "may not be ready for a couple of months" (for an instant-print breath test)\n<b>Why:</b> if this case wakes up, this pattern supports discovery-abuse arguments.',
+         notes:'',files:[]},
+        {id:'l7',title:'T-Mobile call detail records (LOW priority)',done:false,
+         how:'<b>What it shows:</b> date, time, duration, number dialed — NO content.\n<b>Only purpose:</b> corroborates that your logged calls to both agencies happened when you say.\n<b>How:</b> T-Mobile app → billing → call history.\n<b>Priority:</b> low. Your signed notes matter far more.',
+         notes:'',files:[]}
+      ],
+      evidence:[
+        {id:'le1',name:'Breath test printout — 0.04 + timestamp',src:'Tippecanoe Sheriff — VIA ATTORNEY',status:'hold',files:[]},
+        {id:'le2',name:'Breathalyzer calibration records',src:'Tippecanoe Sheriff — VIA ATTORNEY',status:'hold',files:[]},
+        {id:'le3',name:'Blood draw results',src:'IU Health — safe to request now',status:'todo',files:[]},
+        {id:'le4',name:'Bodycam (probable cause statements)',src:'WLPD — VIA ATTORNEY',status:'hold',files:[]},
+        {id:'le5',name:'Police report & FST scoring sheets',src:'WLPD — VIA ATTORNEY',status:'hold',files:[]},
+        {id:'le6',name:'Booking log — hold reason & release time',src:'Tippecanoe Sheriff — VIA ATTORNEY',status:'hold',files:[]},
+        {id:'le7',name:'Receipt for License + warning citation',src:'In hand — photograph & attach',status:'received',files:[]},
+        {id:'le8',name:'Signed notes of December agency calls',src:'You',status:'todo',files:[]},
+        {id:'le9',name:'BMV driving record printout',src:'myBMV.in.gov',status:'todo',files:[]}
+      ],
+      log:[]
+    }
+  },
+  events:[
+    {id:'ev1',date:'2026-07-06',title:'Community Supervision by 3:00 PM — 104 N Buckeye Rm 204',caseId:'kokomo',critical:true},
+    {id:'ev2',date:'2026-07-20',title:'Initial hearing — Howard County Courthouse (confirm time)',caseId:'kokomo',critical:true},
+    {id:'ev3',date:'2026-07-22',title:'Butler Univ. lawsuit — Answer due (Marion Sup. Ct. 3, 49D03-2605-PL-027046)',caseId:'other',critical:true}
+  ]
+};}
+
+let S=null; let webhookUrl=null;
+
+let saveTimer=null;
+function save(){
+  const lbl=document.getElementById('savedLabel'); lbl.textContent='SAVING…';
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    const raw=JSON.stringify(S);
+    const okLocal=await store.set(KEY,raw);
+    if(!okLocal){lbl.textContent='LOCAL SAVE FAILED';return;}
+    if(webhookUrl){
+      lbl.textContent='SAVED · SYNCING SHEET…';
+      try{
+        const light=JSON.parse(raw);
+        ['kokomo','lafayette'].forEach(cid=>{
+          light.cases[cid].tasks.forEach(t=>t.files=(t.files||[]).map(f=>({name:f.name,size:f.size,ts:f.ts})));
+          light.cases[cid].evidence.forEach(e=>e.files=(e.files||[]).map(f=>({name:f.name,size:f.size,ts:f.ts})));
+        });
+        await fetch(webhookUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(light)});
+        lbl.textContent='SYNCED · SHEET BACKED UP';
+      }catch(e){lbl.textContent='SAVED LOCAL · SHEET SYNC FAILED';}
+    }else{lbl.textContent='SAVED LOCAL';}
+  },400);
+}
+
+function updateCounters(){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const sober0=new Date(2026,6,5);
+  const day=86400000;
+  document.getElementById('soberDays').textContent=Math.max(0,Math.floor((now-sober0)/day));
+  const upcoming=S?S.events.filter(e=>new Date(e.date+'T00:00')>=now).sort((a,b)=>a.date.localeCompare(b.date)):[];
+  const numEl=document.getElementById('nextDays'), lblEl=document.getElementById('nextLbl');
+  if(upcoming.length){
+    const d=Math.round((new Date(upcoming[0].date+'T00:00')-now)/day);
+    numEl.textContent=d;
+    const short=upcoming[0].title.length>34?upcoming[0].title.slice(0,34)+'…':upcoming[0].title;
+    lblEl.innerHTML=(d===0?'TODAY':'Days until')+':<br>'+esc(short);
+  }else{numEl.textContent='–';lblEl.textContent='No upcoming deadlines';}
+}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+const modalBack=document.getElementById('modalBack');
+const modalContent=document.getElementById('modalContent');
+modalBack.addEventListener('click',e=>{if(e.target===modalBack)closeModal();});
+function closeModal(){modalBack.classList.remove('active');modalContent.innerHTML='';}
+
+function openItemModal(item, kind){
+  const title = kind==='task' ? item.title : item.name;
+  const how = kind==='task' ? item.how : ('<b>Source:</b> '+(item.src||'—')+'\nAttach files (documents, photos, printouts, screenshots) related to this evidence item.');
+  const hasNotes = kind==='task';
+
+  modalContent.innerHTML = `
+    <button class="close" id="modalClose">×</button>
+    <h3>${esc(title)}</h3>
+    <div class="how">${how||''}</div>
+    ${hasNotes?`
+      <label class="modal-label">Your notes / results</label>
+      <textarea id="mNotes" placeholder="Record what happened, names, dates, answers…">${esc(item.notes||'')}</textarea>
+      <div class="actions">
+        <button class="btn ghost" id="mDlText">Download as .txt</button>
+      </div>
+    `:''}
+    <label class="modal-label">Attached files</label>
+    <div class="file-list" id="mFileList"></div>
+    <div class="file-drop" id="mDrop">Tap to upload — photo, PDF, DOC, anything</div>
+    <input type="file" id="mFile" style="display:none" multiple>
+    <div class="upload-warn">Files stored on this device. Filenames + sizes push to your Google Sheet for reference. <b>Photograph and back up critical originals separately.</b></div>
+  `;
+
+  const renderFiles=()=>{
+    const wrap=document.getElementById('mFileList');
+    wrap.innerHTML='';
+    if(!item.files || !item.files.length){
+      const empty=document.createElement('div');empty.style.color='var(--muted)';empty.style.fontSize='12px';empty.textContent='No files attached yet.';
+      wrap.appendChild(empty);return;
+    }
+    item.files.forEach(f=>{
+      const row=document.createElement('div');row.className='file-item';
+      row.innerHTML=`<span class="fi-name">${esc(f.name)}</span>
+        <span class="fi-size">${(f.size/1024).toFixed(1)}KB</span>
+        <a href="${f.data}" download="${esc(f.name)}">SAVE</a>
+        <button>×</button>`;
+      row.querySelector('button').addEventListener('click',()=>{
+        if(!confirm('Remove '+f.name+'?'))return;
+        item.files=item.files.filter(x=>x.ts!==f.ts);
+        save();renderFiles();render();
+      });
+      wrap.appendChild(row);
+    });
+  };
+  renderFiles();
+
+  document.getElementById('modalClose').addEventListener('click',closeModal);
+  document.getElementById('mDrop').addEventListener('click',()=>document.getElementById('mFile').click());
+  document.getElementById('mFile').addEventListener('change',e=>{
+    const files=Array.from(e.target.files||[]);
+    let done=0;
+    if(!files.length)return;
+    files.forEach(f=>{
+      if(f.size > 5*1024*1024){alert(f.name+' is >5MB — skipped. Attach smaller version or store separately.');done++;if(done===files.length){save();renderFiles();render();}return;}
+      const r=new FileReader();
+      r.onload=()=>{
+        item.files=item.files||[];
+        item.files.push({name:f.name,size:f.size,ts:Date.now()+Math.random(),data:r.result});
+        done++;if(done===files.length){save();renderFiles();render();}
+      };
+      r.readAsDataURL(f);
+    });
+  });
+
+  if(hasNotes){
+    document.getElementById('mNotes').addEventListener('input',e=>{item.notes=e.target.value;save();});
+    document.getElementById('mDlText').addEventListener('click',()=>{
+      const txt=item.notes||'';
+      const blob=new Blob([txt],{type:'text/plain'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download=(item.title||'note').replace(/[^a-z0-9]+/gi,'_').slice(0,40)+'.txt';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
+  }
+
+  modalBack.classList.add('active');
+}
+
+function render(){
+  const app=document.getElementById('app'); app.innerHTML='';
+  ['kokomo','lafayette'].forEach(cid=>app.appendChild(renderCase(cid)));
+  app.appendChild(renderCalendar());
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===S.activeTab));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+S.activeTab));
+  updateCounters();
+}
+
+function renderCase(cid){
+  const c=S.cases[cid];
+  const panel=document.createElement('div');
+  panel.className='panel'; panel.id='panel-'+cid;
+
+  const st=document.createElement('div');
+  st.className='status-line'; st.textContent=c.statusLine;
+  panel.appendChild(st);
+
+  const infoSec=sec('Case Info');
+  const grid=document.createElement('div'); grid.className='info-grid';
+  Object.keys(c.info).forEach(k=>{
+    const fld=c.info[k];
+    const f=document.createElement('div');
+    f.className='info-field'+(k.length>14||String(fld.v).length>26?' full':'');
+    const lab=document.createElement('label');
+    const lspan=document.createElement('span'); lspan.textContent=k;
+    const lock=document.createElement('button');
+    lock.className='lock'+(fld.locked?' locked':'');
+    lock.innerHTML=fld.locked?'&#128274;':'&#128275;';
+    lock.title=fld.locked?'Locked — tap to unlock':'Unlocked — tap to lock as critical';
+    lock.addEventListener('click',()=>{fld.locked=!fld.locked;save();render();});
+    lab.appendChild(lspan); lab.appendChild(lock);
+    const inp=document.createElement('input'); inp.value=fld.v; inp.placeholder='—'; inp.disabled=fld.locked;
+    inp.addEventListener('input',()=>{fld.v=inp.value;save();});
+    f.appendChild(lab);f.appendChild(inp);grid.appendChild(f);
+  });
+  infoSec.appendChild(grid); panel.appendChild(infoSec);
+
+  const doneN=c.tasks.filter(t=>t.done).length;
+  const taskSec=sec('Action Items',doneN+'/'+c.tasks.length);
+  c.tasks.forEach(t=>{
+    const el=document.createElement('div');
+    el.className='task'+(t.done?' done':'');
+    const row=document.createElement('div'); row.className='t-row';
+    row.innerHTML=`<div class="box"><svg viewBox="0 0 16 16" fill="none"><path d="M2.5 8.5L6 12L13.5 4" stroke="#0E1420" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="t-body"><div class="t-title"></div>${t.due?`<span class="t-due${t.critical?' critical':''}"></span>`:''}</div>`;
+    row.querySelector('.t-title').textContent=t.title;
+    if(t.due)row.querySelector('.t-due').textContent=t.due;
+    const attachBtn=document.createElement('button');
+    const nAtt=(t.files||[]).length;
+    const hasNotes = !!(t.notes && t.notes.length);
+    attachBtn.className='t-attach-btn'+((nAtt||hasNotes)?' has':'');
+    attachBtn.textContent = nAtt ? `OPEN · ${nAtt}📎` : (hasNotes?'OPEN · ✎':'OPEN');
+    attachBtn.addEventListener('click',e=>{e.stopPropagation();openItemModal(t,'task');});
+    row.appendChild(attachBtn);
+    row.querySelector('.box').addEventListener('click',e=>{e.stopPropagation();t.done=!t.done;save();render();});
+    row.querySelector('.t-body').addEventListener('click',e=>{e.stopPropagation();openItemModal(t,'task');});
+    el.appendChild(row);
+    taskSec.appendChild(el);
+  });
+  const ad=document.createElement('div'); ad.className='adder';
+  const ai=document.createElement('input'); ai.placeholder='Add a task to this case…'; ai.maxLength=140;
+  const ab=document.createElement('button'); ab.className='btn'; ab.textContent='Add';
+  const addFn=()=>{const v=ai.value.trim();if(!v)return;
+    c.tasks.push({id:'u'+Date.now(),title:v,done:false,how:'',notes:'',files:[],custom:true});
+    ai.value='';save();render();};
+  ab.addEventListener('click',addFn);
+  ai.addEventListener('keydown',e=>{if(e.key==='Enter')addFn();});
+  ad.appendChild(ai);ad.appendChild(ab);
+  taskSec.appendChild(ad);
+  panel.appendChild(taskSec);
+
+  const gotN=c.evidence.filter(e=>e.status==='received').length;
+  const evSec=sec('Evidence Tracker',gotN+'/'+c.evidence.length+' in hand');
+  c.evidence.forEach(ev=>{
+    const row=document.createElement('div'); row.className='ev-item';
+    const nm=document.createElement('div'); nm.className='ev-name';
+    const nAtt=(ev.files||[]).length;
+    nm.innerHTML=`${esc(ev.name)}<small>${esc(ev.src)}</small>${nAtt?`<span class="has-attach">${nAtt} file${nAtt>1?'s':''} attached · tap to view</span>`:'<span style="color:var(--muted);font-size:10.5px">tap to attach</span>'}`;
+    nm.addEventListener('click',()=>openItemModal(ev,'evidence'));
+    const stw=document.createElement('div'); stw.className='ev-status';
+    const sel=document.createElement('select');
+    [['todo','TO DO'],['hold','HOLD-ATTY'],['requested','REQUESTED'],['received','RECEIVED']].forEach(([v,l])=>{
+      const o=document.createElement('option');o.value=v;o.textContent=l;if(ev.status===v)o.selected=true;sel.appendChild(o);
+    });
+    sel.className='s-'+ev.status;
+    sel.addEventListener('change',()=>{ev.status=sel.value;save();render();});
+    sel.addEventListener('click',e=>e.stopPropagation());
+    stw.appendChild(sel);
+    row.appendChild(nm);row.appendChild(stw);
+    evSec.appendChild(row);
+  });
+  const ea=document.createElement('div'); ea.className='adder';
+  const ei=document.createElement('input'); ei.placeholder='Add evidence item…'; ei.maxLength=120;
+  const eb=document.createElement('button'); eb.className='btn'; eb.textContent='Add';
+  const eAdd=()=>{const v=ei.value.trim();if(!v)return;
+    c.evidence.push({id:'e'+Date.now(),name:v,src:'',status:'todo',files:[]});ei.value='';save();render();};
+  eb.addEventListener('click',eAdd);
+  ei.addEventListener('keydown',e=>{if(e.key==='Enter')eAdd();});
+  ea.appendChild(ei);ea.appendChild(eb);
+  evSec.appendChild(ea);
+  panel.appendChild(evSec);
+
+  const logSec=sec('Case Log',c.log.length+' entries');
+  const hint=document.createElement('div');
+  hint.style.cssText='font-size:12px;color:var(--muted);margin-bottom:6px';
+  hint.textContent='Log every call, letter, and event the moment it happens: who, what was said, outcome. This IS your contemporaneous record.';
+  logSec.appendChild(hint);
+  [...c.log].sort((a,b)=>b.ts-a.ts).forEach(en=>{
+    const e=document.createElement('div'); e.className='log-entry';
+    const d=document.createElement('div'); d.className='log-date';
+    const dt=new Date(en.ts);
+    d.innerHTML=`<span>${dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})} · ${dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span>`;
+    const del=document.createElement('button');del.textContent='×';
+    del.addEventListener('click',()=>{if(confirm('Delete this log entry?')){c.log=c.log.filter(x=>x.id!==en.id);save();render();}});
+    d.appendChild(del);
+    const tx=document.createElement('div'); tx.className='log-text'; tx.textContent=en.text;
+    e.appendChild(d);e.appendChild(tx);
+    logSec.appendChild(e);
+  });
+  const la=document.createElement('div'); la.className='log-add';
+  const lt=document.createElement('textarea'); lt.placeholder='New entry — e.g. "Called Tippecanoe Clerk, spoke to Janet, she confirmed no case on file as of today."';
+  const lb=document.createElement('button'); lb.className='btn'; lb.textContent='Add Log Entry';
+  lb.addEventListener('click',()=>{const v=lt.value.trim();if(!v)return;
+    c.log.push({id:'g'+Date.now(),ts:Date.now(),text:v});lt.value='';save();render();});
+  la.appendChild(lt);la.appendChild(lb);
+  logSec.appendChild(la);
+  panel.appendChild(logSec);
+
+  return panel;
+}
+
+function renderCalendar(){
+  const panel=document.createElement('div');
+  panel.className='panel'; panel.id='panel-calendar';
+  const csec=sec('All Deadlines — Both Cases + Other');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const evs=[...S.events].sort((a,b)=>a.date.localeCompare(b.date));
+  if(!evs.length){const e=document.createElement('div');e.className='cal-empty';e.textContent='No deadlines yet. Add one below.';csec.appendChild(e);}
+  let lastDate=null;
+  evs.forEach(ev=>{
+    const evDate=new Date(ev.date+'T00:00');
+    const past=evDate<today;
+    if(ev.date!==lastDate){
+      lastDate=ev.date;
+      const dh=document.createElement('div');
+      dh.className='cal-datehead'+(evDate.getTime()===today.getTime()?' today':'');
+      dh.textContent=(evDate.getTime()===today.getTime()?'TODAY — ':'')+evDate.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+      if(past)dh.style.opacity='.45';
+      csec.appendChild(dh);
+    }
+    const row=document.createElement('div'); row.className='cal-ev';
+    if(past)row.style.opacity='.45';
+    const tag=document.createElement('span'); tag.className='cal-tag '+(ev.caseId||'other');
+    tag.textContent=ev.caseId==='kokomo'?'KOKOMO':ev.caseId==='lafayette'?'W.LAF':'OTHER';
+    const ti=document.createElement('span'); ti.className='cal-title';
+    if(ev.critical){
+      const lockSpan=document.createElement('span'); lockSpan.className='cal-lock'; lockSpan.textContent='🔒';
+      lockSpan.title='Critical — tap unlock button to edit';
+      ti.appendChild(lockSpan);
+      const t=document.createElement('span'); t.textContent=' '+ev.title; ti.appendChild(t);
+    } else {
+      const inp=document.createElement('input'); inp.value=ev.title;
+      inp.addEventListener('input',()=>{ev.title=inp.value;save();});
+      ti.appendChild(inp);
+    }
+    const lockBtn=document.createElement('button'); lockBtn.textContent=ev.critical?'🔓':'🔒';
+    lockBtn.title=ev.critical?'Unlock (allow edit)':'Lock as critical';
+    lockBtn.addEventListener('click',()=>{ev.critical=!ev.critical;save();render();});
+    const dateBtn=document.createElement('button'); dateBtn.textContent='📅';
+    dateBtn.title='Change date';
+    dateBtn.addEventListener('click',()=>{
+      if(ev.critical){if(!confirm('This deadline is locked as critical. Edit the date anyway?'))return;}
+      const nd=prompt('New date (YYYY-MM-DD):',ev.date);
+      if(nd && /^\d{4}-\d{2}-\d{2}$/.test(nd)){ev.date=nd;save();render();}
+      else if(nd){alert('Format must be YYYY-MM-DD (e.g., 2026-07-20).');}
+    });
+    const del=document.createElement('button'); del.textContent='×';
+    del.addEventListener('click',()=>{
+      if(ev.critical){if(!confirm('This deadline is locked as critical. Delete anyway?'))return;}
+      else if(!confirm('Remove this deadline?'))return;
+      S.events=S.events.filter(x=>x.id!==ev.id);save();render();
+    });
+    row.appendChild(tag);row.appendChild(ti);row.appendChild(dateBtn);row.appendChild(lockBtn);row.appendChild(del);
+    csec.appendChild(row);
+  });
+  const add=document.createElement('div'); add.className='cal-add';
+  const r3=document.createElement('div'); r3.className='row3';
+  const di=document.createElement('input'); di.type='date';
+  const sel=document.createElement('select');
+  [['kokomo','Kokomo'],['lafayette','W. Lafayette'],['other','Other']].forEach(([v,l])=>{
+    const o=document.createElement('option');o.value=v;o.textContent=l;sel.appendChild(o);});
+  r3.appendChild(di);r3.appendChild(sel);
+  const ti=document.createElement('input'); ti.placeholder='Deadline / event title…'; ti.maxLength=120;
+  const critLbl=document.createElement('label'); critLbl.className='crit-toggle';
+  const critChk=document.createElement('input'); critChk.type='checkbox';
+  critLbl.appendChild(critChk); critLbl.appendChild(document.createTextNode(' Mark CRITICAL (locks against accidental edit)'));
+  const bt=document.createElement('button'); bt.className='btn'; bt.textContent='Add to Calendar';
+  bt.addEventListener('click',()=>{
+    const v=ti.value.trim(); if(!v||!di.value){alert('Enter both a date and a title.');return;}
+    S.events.push({id:'c'+Date.now(),date:di.value,title:v,caseId:sel.value,critical:critChk.checked});
+    ti.value='';critChk.checked=false;save();render();
+  });
+  add.appendChild(r3);add.appendChild(ti);add.appendChild(critLbl);add.appendChild(bt);
+  csec.appendChild(add);
+  panel.appendChild(csec);
+  return panel;
+}
+
+function sec(title,count){
+  const s=document.createElement('div'); s.className='sec';
+  const h=document.createElement('div'); h.className='sec-head';
+  const t=document.createElement('h2'); t.textContent=title; h.appendChild(t);
+  if(count){const c=document.createElement('span');c.className='count';c.textContent=count;h.appendChild(c);}
+  s.appendChild(h);
+  return s;
+}
+
+document.querySelectorAll('.tab-btn').forEach(b=>{
+  b.addEventListener('click',()=>{S.activeTab=b.dataset.tab;save();render();window.scrollTo(0,0);});
+});
+document.getElementById('resetBtn').addEventListener('click',async()=>{
+  if(!confirm('Reset EVERYTHING — all notes, logs, evidence, files, custom items? This cannot be undone.'))return;
+  S=defaults(); await store.set(KEY,JSON.stringify(S)); render();
+});
+
+document.getElementById('showScript').addEventListener('click',()=>{
+  const box=document.getElementById('scriptBox');
+  const btn=document.getElementById('showScript');
+  if(box.style.display==='none'){box.style.display='block';box.textContent=APPS_SCRIPT_CODE;btn.textContent='Hide script ▾';}
+  else{box.style.display='none';btn.textContent='Show the Apps Script to paste into your sheet ▸';}
+});
+document.getElementById('webhookSave').addEventListener('click',async()=>{
+  const url=document.getElementById('webhookUrl').value.trim();
+  const stat=document.getElementById('setupStatus');
+  if(!url){stat.textContent='Enter a URL first.';stat.className='setup-status fail';return;}
+  if(!url.startsWith('https://script.google.com/')){
+    if(!confirm('That doesn\u2019t look like a Google Apps Script URL. Save anyway?'))return;
+  }
+  webhookUrl=url;
+  await store.set(WEBHOOK_KEY,url);
+  stat.textContent='Webhook saved. Next save will push to your sheet.';
+  stat.className='setup-status ok';
+  save();
+});
+
+(async function init(){
+  try{
+    const raw=await store.get(KEY);
+    if(raw){
+      S=JSON.parse(raw);
+      const d=defaults();
+      ['kokomo','lafayette'].forEach(cid=>{
+        if(!S.cases[cid]){S.cases[cid]=d.cases[cid];return;}
+        const tIds=new Set(S.cases[cid].tasks.map(t=>t.id));
+        d.cases[cid].tasks.forEach(t=>{if(!tIds.has(t.id))S.cases[cid].tasks.push(t);});
+        S.cases[cid].tasks.forEach(t=>{if(!t.files)t.files=[];});
+        const eIds=new Set(S.cases[cid].evidence.map(e=>e.id));
+        d.cases[cid].evidence.forEach(e=>{if(!eIds.has(e.id))S.cases[cid].evidence.push(e);});
+        S.cases[cid].evidence.forEach(e=>{if(!e.files)e.files=[];});
+      });
+      if(!S.events)S.events=d.events;
+      if(!S.activeTab)S.activeTab='kokomo';
+    } else { S=defaults(); }
+  }catch(e){S=defaults();}
+
+  webhookUrl=await store.get(WEBHOOK_KEY);
+  if(webhookUrl){
+    document.getElementById('webhookUrl').value=webhookUrl;
+    document.getElementById('setupStatus').textContent='Webhook active — backups pushing to sheet.';
+    document.getElementById('setupStatus').className='setup-status ok';
+  }
+  render();
+  setInterval(updateCounters,60000);
+})();
+</script>
+</body>
+</html>
